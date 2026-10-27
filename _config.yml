@@ -1,0 +1,30 @@
+# GitHub Pages renders README.md as the demo page. jekyll-seo-tag, included by
+# the default theme, writes the og:* and twitter:* tags that <og-view> reads.
+title: og-view
+description: A web component that displays and debugs Open Graph metadata.
+author: Donnie D'Amato
+lang: en-US
+theme: jekyll-theme-primer
+plugins:
+  - jekyll-seo-tag
+twitter:
+  card: summary_large_image
+defaults:
+  - scope:
+      path: ""
+    values:
+      image:
+        path: https://placehold.co/1200x630/png?text=og-view
+        width: 1200
+        height: 630
+        alt: The words og-view on a gray background
+exclude:
+  - dev
+  - test
+  - scripts
+  - src
+  - node_modules
+  - package.json
+  - package-lock.json
+  - vitest.config.js
+  - PLAN.md

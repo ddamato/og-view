@@ -1,0 +1,47 @@
+{
+  "name": "og-view",
+  "version": "0.1.0",
+  "description": "A web component that displays and debugs Open Graph metadata",
+  "type": "module",
+  "main": "dist/og-view.js",
+  "module": "dist/og-view.js",
+  "exports": {
+    ".": "./dist/og-view.js",
+    "./iife": "./dist/og-view.iife.js"
+  },
+  "unpkg": "dist/og-view.iife.js",
+  "jsdelivr": "dist/og-view.iife.js",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": true,
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "node scripts/build.js --dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ddamato/og-view.git"
+  },
+  "homepage": "https://ddamato.github.io/og-view/",
+  "bugs": "https://github.com/ddamato/og-view/issues",
+  "author": "Donnie D'Amato",
+  "keywords": [
+    "open-graph",
+    "og",
+    "meta",
+    "web-component",
+    "custom-element",
+    "debugger",
+    "twitter-card"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "happy-dom": "^21.0.4",
+    "uqr": "^0.1.3",
+    "vitest": "^5.0.5"
+  }
+}
