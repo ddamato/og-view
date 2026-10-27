@@ -56,7 +56,7 @@ function displayUrl(url) {
 }
 
 export class OgView extends HTMLElement {
-  static observedAttributes = ['tags', 'no-qr', 'heading-level'];
+  static observedAttributes = ['no-qr', 'heading-level'];
 
   /** @type {import('./debug.js').Report | undefined} */
   #report;
@@ -103,12 +103,10 @@ export class OgView extends HTMLElement {
     this.#signature = '';
   }
 
-  /** Exposes the page's colors to the stylesheet for inverted chips and the QR code. */
+  /** Exposes the page's colors to the stylesheet so the QR code is dark on light. */
   #applyColors() {
     const colors = readColors(this);
     if (!colors) return;
-    this.style.setProperty('--_og-view-surface', colors.surface);
-    this.style.setProperty('--_og-view-ink', colors.text);
     this.style.setProperty('--_og-view-qr-dark', colors.dark);
     this.style.setProperty('--_og-view-qr-light', colors.light);
   }
@@ -137,7 +135,7 @@ export class OgView extends HTMLElement {
     /** @type {Map<string, import('./rules/util.js').Measurement>} */
     const measurements = new Map();
     imgs.forEach((img, i) => measurements.set(/** @type {string} */ (img.dataset.measure), results[i]));
-    this.#showImages(c, measurements);
+    this.#showImages(measurements);
 
     const report = analyze(c, (url) => (url ? measurements.get(url) : undefined));
     this.#report = report;
@@ -151,69 +149,85 @@ export class OgView extends HTMLElement {
     }
   }
 
-  /** @param {string | undefined} label */
-  #chip(label) {
-    return this.hasAttribute('tags') && label ? h('code', { class: 'og-view__tag' }, label) : null;
-  }
-
-  /** @param {import('./collect.js').Collected} c */
+  /**
+   * Each rendered value carries `data-og` naming where it came from, like
+   * `og:title`, or `<title>` when og-view fell back.
+   * @param {import('./collect.js').Collected} c
+   */
   #render(c) {
     const { fields } = c;
     const level = Math.min(6, Math.max(1, parseInt(this.getAttribute('heading-level') ?? '2', 10) || 2));
     const twitterImage = fields.twitterImage.value !== fields.image.value ? fields.twitterImage.value : undefined;
 
     const image = h(
-      'figure',
-      { class: 'og-view__image' },
-      this.#chip(fields.image.source),
-      fields.image.value &&
-        h('img', { src: fields.image.value, alt: fields.imageAlt.value ?? '', 'data-measure': fields.image.value, 'data-role': 'image' }),
-      twitterImage &&
-        h('img', { src: twitterImage, alt: fields.imageAlt.value ?? '', 'data-measure': twitterImage, 'data-role': 'twitter', hidden: true }),
-      h('div', { class: 'og-view__placeholder', hidden: Boolean(fields.image.value) }, h('code', {}, 'og:image · 1200×630')),
+      'div',
+      { class: 'og-view__field' },
+      h(
+        'figure',
+        { class: 'og-view__image' },
+        fields.image.value &&
+          h('img', {
+            src: fields.image.value,
+            alt: fields.imageAlt.value ?? '',
+            'data-og': fields.image.source,
+            'data-measure': fields.image.value,
+            'data-role': 'image',
+          }),
+        twitterImage &&
+          h('img', {
+            src: twitterImage,
+            alt: fields.imageAlt.value ?? '',
+            'data-og': fields.twitterImage.source,
+            'data-measure': twitterImage,
+            'data-role': 'twitter',
+            hidden: true,
+          }),
+        h('div', { class: 'og-view__placeholder', hidden: Boolean(fields.image.value) }, h('code', {}, 'og:image · 1200×630')),
+      ),
     );
 
     const favicon = fields.favicon.value;
     const site = h(
       'div',
       { class: 'og-view__field' },
-      this.#chip(`favicon + ${fields.siteName.source}`),
       h(
         'div',
         { class: 'og-view__site' },
-        h(
-          'span',
-          { class: 'og-view__favicon' },
-          favicon && h('img', { src: favicon, alt: '', 'data-measure': favicon, 'data-role': 'favicon' }),
-          h('span', { class: 'og-view__favicon-fallback', hidden: Boolean(favicon) }),
-        ),
-        h('span', { class: 'og-view__site-name' }, fields.siteName.value),
+        favicon &&
+          h('img', {
+            class: 'og-view__favicon',
+            src: favicon,
+            alt: '',
+            'data-og': fields.favicon.source,
+            'data-measure': favicon,
+            'data-role': 'favicon',
+          }),
+        h('div', { class: 'og-view__site-name', 'data-og': fields.siteName.source }, fields.siteName.value),
       ),
     );
 
     const title = fields.title.value &&
-      h('div', { class: 'og-view__field' }, this.#chip(fields.title.source), h(`h${level}`, { class: 'og-view__title' }, fields.title.value));
+      h('div', { class: 'og-view__field' }, h(`h${level}`, { class: 'og-view__title', 'data-og': fields.title.source }, fields.title.value));
 
     const description = fields.description.value &&
-      h('div', { class: 'og-view__field' }, this.#chip(fields.description.source), h('p', { class: 'og-view__description' }, fields.description.value));
+      h('div', { class: 'og-view__field' }, h('p', { class: 'og-view__description', 'data-og': fields.description.source }, fields.description.value));
 
     const url = fields.url.value;
     const author = fields.author.value &&
       h(
-        'span',
-        { class: 'og-view__author' },
-        fields.authorUrl.value ? h('a', { href: fields.authorUrl.value }, fields.author.value) : fields.author.value,
+        'div',
+        { class: 'og-view__author', 'data-og': fields.author.source },
+        fields.authorUrl.value ? h('a', { href: fields.authorUrl.value, 'data-og': fields.authorUrl.source }, fields.author.value) : fields.author.value,
       );
     const meta = h(
       'div',
       { class: 'og-view__meta' },
-      !this.hasAttribute('no-qr') && url && h('div', { class: 'og-view__qr' }, qrSvg(url)),
+      !this.hasAttribute('no-qr') && url && h('div', { class: 'og-view__qr', 'data-og': fields.url.source }, qrSvg(url)),
       h(
         'div',
         { class: 'og-view__field og-view__byline' },
-        this.#chip([fields.author.value && fields.author.source, fields.url.source].filter(Boolean).join(' + ')),
         author,
-        url && h('a', { class: 'og-view__url', href: url }, h('code', {}, displayUrl(url))),
+        url && h('a', { class: 'og-view__url', href: url, 'data-og': fields.url.source }, h('code', {}, displayUrl(url))),
       ),
     );
 
@@ -222,10 +236,9 @@ export class OgView extends HTMLElement {
 
   /**
    * Shows og:image, falling back to twitter:image, then the placeholder.
-   * @param {import('./collect.js').Collected} c
    * @param {Map<string, import('./rules/util.js').Measurement>} measurements
    */
-  #showImages(c, measurements) {
+  #showImages(measurements) {
     const og = /** @type {HTMLImageElement | null} */ (this.querySelector('img[data-role="image"]'));
     const twitter = /** @type {HTMLImageElement | null} */ (this.querySelector('img[data-role="twitter"]'));
     const ok = (/** @type {HTMLImageElement | null} */ img) => img && measurements.get(img.dataset.measure ?? '')?.status === 'loaded';
@@ -233,13 +246,8 @@ export class OgView extends HTMLElement {
     if (og) og.hidden = og !== shown;
     if (twitter) twitter.hidden = twitter !== shown;
     this.querySelector('.og-view__placeholder')?.toggleAttribute('hidden', Boolean(shown));
-    const chip = this.querySelector('.og-view__image > .og-view__tag');
-    if (chip && shown === twitter && c.fields.twitterImage.source) chip.textContent = c.fields.twitterImage.source;
 
     const favicon = /** @type {HTMLImageElement | null} */ (this.querySelector('img[data-role="favicon"]'));
-    if (favicon && !ok(favicon)) {
-      favicon.hidden = true;
-      this.querySelector('.og-view__favicon-fallback')?.removeAttribute('hidden');
-    }
+    if (favicon) favicon.hidden = !ok(favicon);
   }
 }

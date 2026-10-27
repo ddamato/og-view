@@ -1,8 +1,7 @@
 /**
- * Reads the colors behind an element, so chips can be drawn inverted (text
- * color as background, page background as text) and the QR code can be dark
- * on light whatever the theme. CSS can't read an ancestor's background, so
- * this walks up the tree.
+ * Reads the text and background colors around an element, so the QR code can
+ * be dark on light whatever the theme. CSS can't read an ancestor's
+ * background, so this walks up the tree.
  */
 
 /** @param {string} value */
@@ -23,7 +22,7 @@ function luminance({ r, g, b }) {
 
 /**
  * @param {Element} el
- * @returns {{ surface: string, text: string, dark: string, light: string } | undefined}
+ * @returns {{ dark: string, light: string } | undefined}
  */
 export function readColors(el) {
   const view = el.ownerDocument.defaultView;
@@ -49,8 +48,6 @@ export function readColors(el) {
   if (!textRgb || !surfaceRgb) return undefined;
   const textIsDarker = luminance(textRgb) < luminance(surfaceRgb);
   return {
-    surface,
-    text,
     dark: textIsDarker ? text : surface,
     light: textIsDarker ? surface : text,
   };

@@ -42,10 +42,19 @@ describe('<og-view>', () => {
     expect(el.report?.findings.some((f) => f.id === 'required')).toBe(true);
   });
 
-  it('shows source chips only with the tags attribute', async () => {
-    expect((await mount()).querySelector('.og-view__tag')).toBeNull();
-    const chips = [...(await mount('tags')).querySelectorAll('.og-view__tag')].map((c) => c.textContent);
-    expect(chips).toEqual(['og:image', 'favicon + og:site_name', '<title>', 'og:description', 'meta[name=author] + og:url']);
+  it('marks each value with data-og naming its source', async () => {
+    const el = await mount();
+    const sources = [...el.querySelectorAll('[data-og]')].map((e) => [e.className || e.tagName.toLowerCase(), e.getAttribute('data-og')]);
+    expect(sources).toEqual([
+      ['img', 'og:image'],
+      ['og-view__favicon', '/favicon.ico'],
+      ['og-view__site-name', 'og:site_name'],
+      ['og-view__title', '<title>'],
+      ['og-view__description', 'og:description'],
+      ['og-view__qr', 'og:url'],
+      ['og-view__author', 'meta[name=author]'],
+      ['og-view__url', 'og:url'],
+    ]);
   });
 
   it('honors no-qr and heading-level', async () => {

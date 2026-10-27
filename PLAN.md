@@ -68,11 +68,11 @@ Relative URLs are resolved against `document.baseURI` for display. The debugger 
     - `og:description`
     - A rule.
     - A row with the QR code of `og:url` next to `article:author + og:url`: author name, then the URL in mono.
-  - **Tag chips (opt-in via the `tags` attribute):** each block gets a small mono chip naming its source property. The chip names the **actual** source (for example `<title>` instead of `og:title`) when a fallback was used, so the visual doubles as a quick debugger.
-- Responsive. Below a container width (`container-type: inline-size` on `og-view`), the layout stacks image-over-text.
+  - **Sources in the markup:** each rendered value has a `data-og` attribute naming its **actual** source, for example `og:title`, or `<title>` when a fallback was used. Inspecting the element shows where everything came from. *Changed during the build:* this replaced visible chips behind a `tags` attribute.
+- Responsive without container queries. The content sets the card's size, and the image and text wrap onto separate rows when there isn't room.
 - Stable class hooks on each region for consumers who want overrides, replacing `::part()` since there's no shadow root:
   - `og-view__image`, `og-view__site`, `og-view__title`, `og-view__description`
-  - `og-view__author`, `og-view__url`, `og-view__qr`, `og-view__tag`
+  - `og-view__author`, `og-view__url`, `og-view__qr`
 - Re-renders replace the element's own children only. Any author-provided children are ignored and overwritten, which is documented.
 
 ### QR code
@@ -85,27 +85,21 @@ Goal: the component looks like it belongs to whatever site it's dropped into, wi
 Approach: **light DOM plus a minimal, low-priority component stylesheet.**
 
 - **Typography and color come from the page.** Because content is real `h2`, `p`, `a`, `code` and `hr` in the light DOM, the site's existing rules apply with no sampling or configuration. Theme toggles and dark mode work for free.
-- **The component stylesheet is injected once** into `document.head` as `<style id="og-view-styles">`, wrapped in `@layer og-view`. Any unlayered page CSS beats it, so the page always wins on look.
-  - Selectors use `:where()` to keep specificity at zero.
-  - It contains **layout only**: grid, gaps, the image aspect ratio and chamfer, the chip shape, and the QR sizing.
-  - It avoids fonts and colors, except chip and frame accents derived from `currentColor` via `color-mix()`.
-- **Layout-critical rules are scoped to `og-view` class names**, which page CSS won't target, so layout stays robust even though page styles cascade in.
-- **Custom properties as an escape hatch:**
-  - `--og-view-gap`
-  - `--og-view-image-width`
-  - `--og-view-chamfer`
-  - `--og-view-accent` (defaults to `currentColor`)
-  - `--og-view-tag-color` / `--og-view-tag-background`
-  - `--og-view-qr-size` / `--og-view-qr-color` / `--og-view-qr-background`
-  - *Built differently from the plan:* `--og-view-stack-at` was dropped because container queries can't use `var()`. The breakpoint is fixed at 40rem.
-- **Page colors (`src/colors.js`, added during the build).** The mock's chips are inverted (text color behind, page background in front). CSS can't read an ancestor's background, so the element walks up to the nearest painted background and exposes private `--_og-view-*` properties.
-  - Chips are inverted, matching the mock and staying readable over images.
-  - The QR code is always dark modules on a light background, the most reliable to scan.
-  - Colors are re-read when `<html>` or `<body>` changes `class`, `style`, `data-theme` or `data-mode`, and on `prefers-color-scheme` changes.
+- **The component stylesheet is injected once** into `document.head` as `<style id="og-view-styles">`, wrapped in `@layer og-view`. Unlayered page CSS beats layered CSS regardless of specificity, so the page always wins, and plain class selectors are enough.
+  - It's **layout only**:
+    - `og-view` is `width: fit-content`: the content dictates its size, capped at the space available. There are no container queries, which would be overkill here.
+    - a wrapping flex row: the image and the text are each 520px and sit side by side, wrapping onto separate rows when there isn't room
+      - The text uses `width`, not `flex-basis`, because the card's `fit-content` width counts `width` but not `flex-basis`.
+      - A `fit-content` box can't shrink back to the width of wrapped rows, which is a CSS limit. So wrapped rows are centered (`justify-content: center`), which looks the same.
+      - `max-width: 100%` on `og-view` and `min-width: 0` on both columns let the card shrink below 520px on phones.
+    - the image's 1.91:1 aspect ratio
+    - the favicon's and QR code's sizes
+  - **No decoration and no public custom properties.** Authors restyle by targeting the `og-view__*` classes, which always wins. *Simplified during the build:*
+    - removed: the chamfered frame, the hatched placeholder, the boxed favicon, the uppercase site name, inverted chips and about ten `--og-view-*` properties
+    - Chips are plain `<code>`. The image's chip sits above the image rather than over it, so it doesn't need its own colors.
+- **Page colors (`src/colors.js`, added during the build), for the QR code only.** CSS can't read an ancestor's background, so the element walks up to the nearest painted background. It sets private `--_og-view-qr-dark` and `--_og-view-qr-light` properties, so the code is always dark modules on a light background, the most reliable to scan. Colors are re-read when `<html>` or `<body>` changes `class`, `style`, `data-theme` or `data-mode`, and on `prefers-color-scheme` changes.
 - **Known risks of light DOM:**
-  - Aggressive page rules can distort the card, for example `h2 { margin-top: 4rem }`, `img { max-width: 50% }`, or `hr { display: none }`.
-    - Mitigation: the layered stylesheet resets only `margin` on our own children via `:where(og-view) > * > *`.
-    - Otherwise accept it, since matching the page is the point.
+  - Aggressive page rules can distort the card, for example `h2 { margin-top: 4rem }`, `img { max-width: 50% }`, or `hr { display: none }`. That's accepted, since matching the page is the point.
   - The `<h2>` joins the document outline. A `heading-level` attribute (default `2`) lets authors pick `h3`–`h6`.
 
 ## 4. Console debugger (`src/debug.js`)
@@ -316,7 +310,6 @@ The X large-image numbers (2:1 ratio, 300×157 to 4096×4096) came from a search
 ```html
 <og-view></og-view>                      <!-- display (with QR) + console debug -->
 <og-view quiet></og-view>                <!-- display only, no console output -->
-<og-view tags></og-view>                 <!-- show the property/source chips -->
 <og-view no-qr></og-view>                <!-- hide the QR code -->
 <og-view heading-level="3"></og-view>    <!-- title rendered as <h3> -->
 ```
@@ -335,7 +328,12 @@ The X large-image numbers (2:1 ratio, 300×157 to 4096×4096) came from a search
   - `"module"` / `"exports"` point to the ESM build.
   - `"files": ["dist"]`
 - The npm name `og-view` is currently unclaimed.
-- **Release:** `npm version` plus a GitHub Action that builds and publishes on tag.
+- **Release:** manual, from a clean `main`:
+  1. `npm version <patch|minor|major>`. Its `version` script runs `auto-changelog -p` and stages `CHANGELOG.md`, so the changelog lands in the version commit and tag.
+  2. `npm publish`. `prepublishOnly` runs the tests and the build first.
+  3. `git push --follow-tags`
+  - The package starts at `0.0.0`, so the first `npm version minor` releases 0.1.0.
+  - CI (`.github/workflows/test.yml`) only runs tests. *Changed during the build:* a tag-triggered publish workflow was removed, because it would try to publish the same version a second time after a manual `npm publish`.
 
 ## 7. Demo via GitHub Pages, from Markdown only
 
@@ -344,7 +342,7 @@ Use GitHub Pages' built-in Jekyll build on `main` / root, so **`README.md` becom
 - `_config.yml` sets `title`, `description`, `author`, `logo` and the default `image`. The default Pages theme includes `jekyll-seo-tag`, which **emits real `og:*` and `twitter:*` tags into `<head>`** from that config. The demo then shows real data with no hand-written meta tags.
 - `README.md` contains, as raw HTML (kramdown passes it through):
   ```html
-  <og-view tags></og-view>
+  <og-view></og-view>
   <script src="https://unpkg.com/og-view" defer></script>
   ```
   On github.com the README renders the same text with those tags stripped. On Pages they're live.
@@ -359,7 +357,7 @@ Use GitHub Pages' built-in Jekyll build on `main` / root, so **`README.md` becom
 
 **Decision: load the demo script from unpkg.** The README snippet and the demo stay identical. The trade-off is that the demo only reflects a release, not `main`. Local development uses a small dev page served by esbuild (`npm run dev`). It's dev-only and not part of Pages.
 
-The demo README shows `<og-view tags>`, so visitors see the source chips and are told to open the console for the debugger output.
+The demo README tells visitors to open the console for the debugger output, and to inspect the element to see each value's `data-og` source.
 
 ## 8. Testing
 
@@ -395,6 +393,6 @@ The demo README shows `<og-view tags>`, so visitors see the source chips and are
 | Scope | Current page's `<head>` only. There's no `src=` attribute and no previewing of other pages. |
 | Network | No requests beyond the images the card renders: `og:image`, `twitter:image` when it's different (hidden if both load), and the favicon. |
 | Assumption | Metadata in `<head>` is in the server-rendered HTML, not added on the client. So the live DOM is treated as what crawlers see. |
-| Defaults | QR code **on** (`no-qr` to hide). Console debugger **on** (`quiet` to silence). Tag chips **off** (`tags` to show). |
+| Defaults | QR code **on** (`no-qr` to hide). Console debugger **on** (`quiet` to silence). Sources are always in the markup as `data-og`, with no visible chips. |
 | Name | `og-view` on npm (available) and the `<og-view>` element. |
 

@@ -4,9 +4,9 @@
 
 A web component that displays the Open Graph metadata of the page it's on, and reports in the browser console how that metadata could be improved for X, Facebook, LinkedIn, Discord and Bluesky.
 
-**[This page is the demo](https://ddamato.github.io/og-view/).** The card below is built from this page's own `<head>`. Open the browser console to see the report.
+**[This page is the demo](https://ddamato.github.io/og-view/).** The card below is built from this page's own `<head>`. Open the browser console to see the report, and inspect the card to see where each value came from.
 
-<og-view tags></og-view>
+<og-view></og-view>
 <script src="https://unpkg.com/og-view" defer></script>
 
 ## Install
@@ -39,7 +39,6 @@ It reads `<head>` and shows the site name and favicon, title, description, image
 
 | Attribute | Effect |
 | --- | --- |
-| `tags` | Labels each part with the tag it came from, such as `og:title`. When a tag is missing, the label shows the fallback used, such as `<title>`. |
 | `quiet` | Turns off the console report. |
 | `no-qr` | Hides the QR code. |
 | `heading-level="3"` | Renders the title as `<h3>`. The default is `<h2>`. |
@@ -48,23 +47,30 @@ It reads `<head>` and shows the site name and favicon, title, description, image
 
 `<og-view>` renders into the page itself, not a shadow root. The title is a real `<h2>`, the description a `<p>`, and the URL an `<a>` and `<code>`, so your site's own styles apply to them.
 
-The component's stylesheet only handles layout. It's placed in `@layer og-view` with zero-specificity selectors, so any of your CSS wins over it. To adjust it, set these custom properties on `og-view`:
+The component's stylesheet only handles layout. The image and text sit side by side and wrap onto separate rows when there isn't room, and the favicon and QR code get a size.
 
-| Property | Default |
-| --- | --- |
-| `--og-view-gap` | Scales with the container |
-| `--og-view-image-width` | `45%` |
-| `--og-view-chamfer` | `0.75rem` (the cut corners on the image) |
-| `--og-view-accent` | `currentColor` (site name and image frame) |
-| `--og-view-tag-color`, `--og-view-tag-background` | The page's background and text colors, inverted |
-| `--og-view-qr-size` | `7rem` |
-| `--og-view-qr-color`, `--og-view-qr-background` | The darker and lighter of the page's text and background colors |
+The stylesheet is in `@layer og-view`, so any of your CSS wins over it. To change anything, target these classes:
+- `og-view` (the layout), `og-view__image`, `og-view__site`, `og-view__favicon`
+- `og-view__title`, `og-view__description`, `og-view__author`, `og-view__url`, `og-view__qr`
 
-Each part also has a class for direct styling:
-- `og-view__image`, `og-view__site`, `og-view__title`, `og-view__description`
-- `og-view__author`, `og-view__url`, `og-view__qr`, `og-view__tag`
+```css
+.og-view__qr { width: 5rem; }
+```
 
-Below 40rem wide, the card stacks the image above the text.
+### Where each value came from
+
+Every rendered value has a `data-og` attribute naming the tag it came from. When a tag is missing, the attribute shows the fallback og-view used. Inspect the element to see it:
+
+```html
+<h2 class="og-view__title" data-og="&lt;title&gt;">…</h2>
+<p class="og-view__description" data-og="og:description">…</p>
+```
+
+You can also style by source, for example to highlight fallbacks while working on a page:
+
+```css
+og-view [data-og^="<"], og-view [data-og*="location"] { outline: 2px dashed red; }
+```
 
 ## The console report
 
@@ -115,7 +121,17 @@ Platforms change their documentation and their behavior. If a check is wrong or 
 
 ```sh
 npm install
-npm run dev    # http://localhost:8000, with dev/index.html and dev/bare.html
+npm run dev    # serves dev/index.html at http://localhost:8000
 npm test
 npm run build  # dist/og-view.js (ESM) and dist/og-view.iife.js
+```
+
+### Releasing
+
+From a clean working tree on `main`:
+
+```sh
+npm version minor      # or patch / major: bumps the version, updates CHANGELOG.md, commits and tags
+npm publish            # runs the tests and builds first (prepublishOnly)
+git push --follow-tags
 ```
