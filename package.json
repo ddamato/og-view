@@ -1,6 +1,6 @@
 {
   "name": "og-view",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A web component that displays and debugs Open Graph metadata",
   "type": "module",
   "main": "dist/og-view.js",
