@@ -8,18 +8,66 @@ import { readColors } from './colors.js';
 const IMAGE_TIMEOUT = 10_000;
 
 /**
- * @param {string} tag
- * @param {Record<string, string | boolean | null | undefined>} [attrs]
- * @param {Array<Node | string | null | undefined | false>} children
+ * The card. Parts without a value are removed on render, and the heading is
+ * swapped for the `heading-level` tag.
  */
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [name, value] of Object.entries(attrs)) {
-    if (value === null || value === undefined || value === false) continue;
-    el.setAttribute(name, value === true ? '' : value);
+const TEMPLATE = document.createElement('template');
+TEMPLATE.innerHTML = `
+  <div class="og-view">
+    <figure class="og-view__image">
+      <img data-role="image">
+      <img data-role="twitter" hidden>
+      <div class="og-view__placeholder"><code>og:image · 1200×630</code></div>
+    </figure>
+    <div class="og-view__body">
+      <div class="og-view__field">
+        <div class="og-view__site">
+          <img class="og-view__favicon" data-role="favicon" alt="">
+          <div class="og-view__site-name"></div>
+        </div>
+      </div>
+      <div class="og-view__field"><h2 class="og-view__title"></h2></div>
+      <div class="og-view__field"><p class="og-view__description"></p></div>
+      <hr>
+      <div class="og-view__meta">
+        <div class="og-view__qr"></div>
+        <div class="og-view__field og-view__byline">
+          <div class="og-view__author"></div>
+          <a class="og-view__url"><code></code></a>
+        </div>
+      </div>
+    </div>
+  </div>
+`.replace(/>\s+</g, '><').trim();
+
+/**
+ * Writes a field's value as text and marks its source, or removes `remove`
+ * when there's no value.
+ * @param {Element} el
+ * @param {import('./collect.js').Field} field
+ * @param {Element} [remove]
+ */
+function fill(el, field, remove = el) {
+  if (!field.value) {
+    remove.remove();
+    return false;
   }
-  el.append(.../** @type {Array<Node | string>} */ (children.flat().filter((c) => c !== null && c !== undefined && c !== false)));
-  return el;
+  el.textContent = field.value;
+  el.setAttribute('data-og', field.source ?? '');
+  return true;
+}
+
+/**
+ * Points an image at a URL to be measured, or removes it when there's none.
+ * @param {HTMLImageElement} img
+ * @param {string | undefined} url
+ * @param {import('./collect.js').Field} field
+ */
+function fillImage(img, url, field) {
+  if (!url) return img.remove();
+  img.src = url;
+  img.setAttribute('data-og', field.source ?? '');
+  img.setAttribute('data-measure', url);
 }
 
 /**
@@ -156,82 +204,54 @@ export class OgView extends HTMLElement {
    */
   #render(c) {
     const { fields } = c;
+    const card = /** @type {DocumentFragment} */ (TEMPLATE.content.cloneNode(true));
+    const $ = (/** @type {string} */ selector) => /** @type {HTMLElement} */ (card.querySelector(selector));
+
+    const image = /** @type {HTMLImageElement} */ ($('[data-role="image"]'));
+    const twitter = /** @type {HTMLImageElement} */ ($('[data-role="twitter"]'));
+    image.alt = twitter.alt = fields.imageAlt.value ?? '';
+    fillImage(image, fields.image.value, fields.image);
+    fillImage(twitter, fields.twitterImage.value !== fields.image.value ? fields.twitterImage.value : undefined, fields.twitterImage);
+    $('.og-view__placeholder').hidden = Boolean(fields.image.value);
+
+    fillImage(/** @type {HTMLImageElement} */ ($('.og-view__favicon')), fields.favicon.value, fields.favicon);
+    fill($('.og-view__site-name'), fields.siteName);
+
     const level = Math.min(6, Math.max(1, parseInt(this.getAttribute('heading-level') ?? '2', 10) || 2));
-    const twitterImage = fields.twitterImage.value !== fields.image.value ? fields.twitterImage.value : undefined;
+    let title = $('.og-view__title');
+    if (level !== 2) {
+      const heading = document.createElement(`h${level}`);
+      heading.className = title.className;
+      title.replaceWith(heading);
+      title = heading;
+    }
+    fill(title, fields.title, title.parentElement ?? title);
+    const description = $('.og-view__description');
+    fill(description, fields.description, description.parentElement ?? description);
 
-    const image = h(
-      'div',
-      { class: 'og-view__field' },
-      h(
-        'figure',
-        { class: 'og-view__image' },
-        fields.image.value &&
-          h('img', {
-            src: fields.image.value,
-            alt: fields.imageAlt.value ?? '',
-            'data-og': fields.image.source,
-            'data-measure': fields.image.value,
-            'data-role': 'image',
-          }),
-        twitterImage &&
-          h('img', {
-            src: twitterImage,
-            alt: fields.imageAlt.value ?? '',
-            'data-og': fields.twitterImage.source,
-            'data-measure': twitterImage,
-            'data-role': 'twitter',
-            hidden: true,
-          }),
-        h('div', { class: 'og-view__placeholder', hidden: Boolean(fields.image.value) }, h('code', {}, 'og:image · 1200×630')),
-      ),
-    );
-
-    const favicon = fields.favicon.value;
-    const site = h(
-      'div',
-      { class: 'og-view__field' },
-      h(
-        'div',
-        { class: 'og-view__site' },
-        favicon &&
-          h('img', {
-            class: 'og-view__favicon',
-            src: favicon,
-            alt: '',
-            'data-og': fields.favicon.source,
-            'data-measure': favicon,
-            'data-role': 'favicon',
-          }),
-        h('div', { class: 'og-view__site-name', 'data-og': fields.siteName.source }, fields.siteName.value),
-      ),
-    );
-
-    const title = fields.title.value &&
-      h('div', { class: 'og-view__field' }, h(`h${level}`, { class: 'og-view__title', 'data-og': fields.title.source }, fields.title.value));
-
-    const description = fields.description.value &&
-      h('div', { class: 'og-view__field' }, h('p', { class: 'og-view__description', 'data-og': fields.description.source }, fields.description.value));
+    const author = $('.og-view__author');
+    if (fill(author, fields.author) && fields.authorUrl.value) {
+      const authorLink = document.createElement('a');
+      authorLink.href = fields.authorUrl.value;
+      authorLink.setAttribute('data-og', fields.authorUrl.source ?? '');
+      authorLink.append(...author.childNodes);
+      author.append(authorLink);
+    }
 
     const url = fields.url.value;
-    const author = fields.author.value &&
-      h(
-        'div',
-        { class: 'og-view__author', 'data-og': fields.author.source },
-        fields.authorUrl.value ? h('a', { href: fields.authorUrl.value, 'data-og': fields.authorUrl.source }, fields.author.value) : fields.author.value,
-      );
-    const meta = h(
-      'div',
-      { class: 'og-view__meta' },
-      !this.hasAttribute('no-qr') && url && h('div', { class: 'og-view__qr', 'data-og': fields.url.source }, qrSvg(url)),
-      h(
-        'div',
-        { class: 'og-view__field og-view__byline' },
-        author,
-        url && h('a', { class: 'og-view__url', href: url, 'data-og': fields.url.source }, h('code', {}, displayUrl(url))),
-      ),
-    );
+    const qr = $('.og-view__qr');
+    if (url && !this.hasAttribute('no-qr')) {
+      qr.setAttribute('data-og', fields.url.source ?? '');
+      qr.append(qrSvg(url));
+    } else qr.remove();
+    const urlLink = /** @type {HTMLAnchorElement} */ ($('.og-view__url'));
+    if (url) {
+      urlLink.href = url;
+      urlLink.setAttribute('data-og', fields.url.source ?? '');
+      /** @type {HTMLElement} */ (urlLink.firstElementChild).textContent = displayUrl(url);
+    } else urlLink.remove();
 
-    this.replaceChildren(h('div', { class: 'og-view' }, image, h('div', { class: 'og-view__body' }, site, title, description, h('hr'), meta)));
+    this.replaceChildren(card);
   }
 
   /**

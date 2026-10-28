@@ -1,7 +1,6 @@
 /**
  * Resolves the title, description and image each platform would use. Platform
  * rules check these values rather than og-view's own display fields.
- * See "Per-platform resolution" in PLAN.md.
  */
 
 /**

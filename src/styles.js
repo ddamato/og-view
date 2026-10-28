@@ -18,22 +18,23 @@ export const STYLES = /* css */ `
     justify-content: center;
     gap: 1ch;
 
-    & > .og-view__field {
-      flex-basis: 520px;
+    & .og-view__image {
+      margin: 0;
+      flex-basis: 440px;
       aspect-ratio: 1.91;
       width: 100%;
     }
 
     & > .og-view__body {
-      width: 520px;
+      width: 440px;
+    }
+
+    & .og-view__field {
+      max-width: 40ch;
     }
 
     & > * {
       min-width: 0;
-    }
-
-    & .og-view__image {
-      margin: 0;
     }
 
     & :where(.og-view__site, .og-view__meta) {

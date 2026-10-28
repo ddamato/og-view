@@ -6,7 +6,7 @@ A web component that displays the Open Graph metadata of the page it's on, and r
 
 **[This page is the demo](https://ddamato.github.io/og-view/).** The card below is built from this page's own `<head>`. Open the browser console to see the report, and inspect the card to see where each value came from.
 
-<og-view></og-view>
+<og-view heading-level="3"></og-view>
 <script src="https://unpkg.com/og-view" defer></script>
 
 ## Install
@@ -87,7 +87,7 @@ There are about 55 checks. Each one cites the spec or a platform's documentation
 - X, Facebook, LinkedIn and Discord's documented limits
 - images, video and the favicon
 
-When platforms disagree, each platform's result is reported separately. For example, X wants a 2:1 image and LinkedIn wants 1.91:1. The full list, with sources, is in [PLAN.md](https://github.com/ddamato/og-view/blob/main/PLAN.md#4-console-debugger-srcdebugjs).
+When platforms disagree, each platform's result is reported separately. For example, X wants a 2:1 image and LinkedIn wants 1.91:1. Each rule, with the sources it cites, is in [src/rules](https://github.com/ddamato/og-view/tree/main/src/rules).
 
 The report ends with links to each platform's own preview debugger, and notes on how long each platform caches previews.
 

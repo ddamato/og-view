@@ -2,13 +2,16 @@
 # the default theme, writes the og:* and twitter:* tags that <og-view> reads.
 title: og-view
 description: A web component that displays and debugs Open Graph metadata.
-author: Donnie D'Amato
+author:
+  name: Donnie D'Amato
+  twitter: donniedamato
 lang: en-US
 theme: jekyll-theme-primer
 plugins:
   - jekyll-seo-tag
 twitter:
   card: summary_large_image
+  username: donniedamato
 defaults:
   - scope:
       path: ""
@@ -27,4 +30,3 @@ exclude:
   - package.json
   - package-lock.json
   - vitest.config.js
-  - PLAN.md

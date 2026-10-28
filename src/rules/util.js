@@ -62,7 +62,7 @@ export function charLength(value) {
   return [...value].length;
 }
 
-/** Image formats each platform documents. See the format table in PLAN.md. */
+/** Image formats each platform documents. */
 export const IMAGE_FORMATS = {
   x: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
   facebook: ['jpg', 'jpeg', 'png', 'gif'],

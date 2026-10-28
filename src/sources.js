@@ -1,5 +1,5 @@
 /**
- * Every rule cites one of these. See "Sources" in PLAN.md.
+ * Every rule cites one of these.
  * @type {Record<string, { title: string, url: string }>}
  */
 export const SOURCES = {
