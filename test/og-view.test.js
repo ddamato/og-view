@@ -85,10 +85,17 @@ describe('<og-view>', () => {
     vi.restoreAllMocks();
   });
 
-  it('injects its stylesheet once, first in <head>', async () => {
-    await mount();
-    await mount();
-    expect(document.querySelectorAll('#og-view-styles')).toHaveLength(1);
-    expect(document.head.firstElementChild?.id).toBe('og-view-styles');
+  it('sets the favicon scheme from the background behind the card', async () => {
+    document.body.style.backgroundColor = 'rgb(17, 17, 17)';
+    expect((await mount()).style.getPropertyValue('--_og-view-scheme')).toBe('dark');
+    document.body.style.backgroundColor = 'rgb(250, 250, 250)';
+    expect((await mount()).style.getPropertyValue('--_og-view-scheme')).toBe('light');
+    document.body.removeAttribute('style');
+  });
+
+  it('carries its stylesheet inside the element, not in <head>', async () => {
+    const el = await mount();
+    expect(el.firstElementChild?.tagName).toBe('STYLE');
+    expect(document.head.querySelector('style')).toBeNull();
   });
 });

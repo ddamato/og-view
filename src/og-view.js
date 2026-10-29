@@ -1,24 +1,24 @@
 import { collect } from './collect.js';
 import { analyze, log } from './debug.js';
 import { qrSvg } from './qr.js';
-import { injectStyles } from './styles.js';
-import { readColors } from './colors.js';
+import { STYLES } from './styles.js';
+import { readScheme } from './colors.js';
 
 /** How long to wait for an image before reporting without it. */
 const IMAGE_TIMEOUT = 10_000;
 
 /**
- * The card. Parts without a value are removed on render, and the heading is
- * swapped for the `heading-level` tag.
+ * The card and its stylesheet. Parts without a value are removed on render,
+ * and the heading is swapped for the `heading-level` tag.
  */
 const TEMPLATE = document.createElement('template');
-TEMPLATE.innerHTML = `
+TEMPLATE.innerHTML = `<style>${STYLES}</style>` + `
   <div class="og-view">
-    <figure class="og-view__image">
+    <div class="og-view__image">
       <img data-role="image">
       <img data-role="twitter" hidden>
       <div class="og-view__placeholder"><code>og:image · 1200×630</code></div>
-    </figure>
+    </div>
     <div class="og-view__body">
       <div class="og-view__field">
         <div class="og-view__site">
@@ -102,6 +102,16 @@ function measure(img) {
   });
 }
 
+/**
+ * Sets the image behind the blurred backdrop, or clears it.
+ * @param {HTMLElement} el
+ * @param {string | undefined} url
+ */
+function setBackdrop(el, url) {
+  if (url) el.style.setProperty('--_og-view-backdrop', `url(${JSON.stringify(url)})`);
+  else el.style.removeProperty('--_og-view-backdrop');
+}
+
 /** @param {string} url */
 function displayUrl(url) {
   return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -115,8 +125,8 @@ export class OgView extends HTMLElement {
   /** @type {MutationObserver | undefined} */
   #observer;
   /** Watches for theme changes on <html> and <body>. */
-  #themeObserver = new MutationObserver(() => this.#applyColors());
-  #onSchemeChange = () => this.#applyColors();
+  #themeObserver = new MutationObserver(() => this.#applyScheme());
+  #onSchemeChange = () => this.#applyScheme();
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   #debounce;
   #generation = 0;
@@ -131,10 +141,7 @@ export class OgView extends HTMLElement {
   }
 
   connectedCallback() {
-    injectStyles(this.ownerDocument);
-    this.#observer = new MutationObserver((records) => {
-      // Ignore our own stylesheet.
-      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => /** @type {Element} */ (n).id === 'og-view-styles'))) return;
+    this.#observer = new MutationObserver(() => {
       clearTimeout(this.#debounce);
       this.#debounce = setTimeout(() => this.refresh({ ifChanged: true }), 100);
     });
@@ -155,12 +162,10 @@ export class OgView extends HTMLElement {
     this.#signature = '';
   }
 
-  /** Exposes the page's colors to the stylesheet so the QR code is dark on light. */
-  #applyColors() {
-    const colors = readColors(this);
-    if (!colors) return;
-    this.style.setProperty('--_og-view-qr-dark', colors.dark);
-    this.style.setProperty('--_og-view-qr-light', colors.light);
+  /** Tells the stylesheet whether the page behind the card is light or dark, for an SVG favicon. */
+  #applyScheme() {
+    const scheme = readScheme(this);
+    if (scheme) this.style.setProperty('--_og-view-scheme', scheme);
   }
 
   attributeChangedCallback() {
@@ -178,7 +183,7 @@ export class OgView extends HTMLElement {
     this.#signature = signature;
     const generation = ++this.#generation;
     this.#render(c);
-    this.#applyColors();
+    this.#applyScheme();
 
     const imgs = /** @type {HTMLImageElement[]} */ ([...this.querySelectorAll('img[data-measure]')]);
     const results = await Promise.all(imgs.map(measure));
@@ -217,6 +222,7 @@ export class OgView extends HTMLElement {
     fillImage(image, fields.image.value, fields.image);
     fillImage(twitter, fields.twitterImage.value !== fields.image.value ? fields.twitterImage.value : undefined, fields.twitterImage);
     $('.og-view__placeholder').hidden = Boolean(fields.image.value);
+    setBackdrop($('.og-view__image'), fields.image.value);
 
     fillImage(/** @type {HTMLImageElement} */ ($('.og-view__favicon')), fields.favicon.value, fields.favicon);
     fill($('.og-view__site-name'), fields.siteName);
@@ -270,6 +276,8 @@ export class OgView extends HTMLElement {
     if (og) og.hidden = og !== shown;
     if (twitter) twitter.hidden = twitter !== shown;
     this.querySelector('.og-view__placeholder')?.toggleAttribute('hidden', Boolean(shown));
+    const backdrop = /** @type {HTMLElement | null} */ (this.querySelector('.og-view__image'));
+    if (backdrop) setBackdrop(backdrop, shown?.dataset.measure);
 
     const favicon = /** @type {HTMLImageElement | null} */ (this.querySelector('img[data-role="favicon"]'));
     if (favicon) favicon.hidden = !ok(favicon);

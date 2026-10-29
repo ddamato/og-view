@@ -1,7 +1,7 @@
 /**
- * Reads the text and background colors around an element, so the QR code can
- * be dark on light whatever the theme. CSS can't read an ancestor's
- * background, so this walks up the tree.
+ * Reads whether the background behind an element is light or dark, so an SVG
+ * favicon that styles itself with prefers-color-scheme matches the page rather
+ * than the OS. CSS can't read an ancestor's background, so this walks up the tree.
  */
 
 /** @param {string} value */
@@ -22,33 +22,23 @@ function luminance({ r, g, b }) {
 
 /**
  * @param {Element} el
- * @returns {{ dark: string, light: string } | undefined}
+ * @returns {'light' | 'dark' | undefined}
  */
-export function readColors(el) {
+export function readScheme(el) {
   const view = el.ownerDocument.defaultView;
   if (!view) return undefined;
-  const text = view.getComputedStyle(el).color;
-  /** @type {string | undefined} */
+  /** @type {ReturnType<typeof parse>} */
   let surface;
-  for (let node = /** @type {Element | null} */ (el); node; node = node.parentElement) {
-    const background = view.getComputedStyle(node).backgroundColor;
-    const parsed = parse(background);
-    if (parsed && parsed.a > 0) {
-      surface = background;
-      break;
-    }
+  for (let node = /** @type {Element | null} */ (el); node && !surface; node = node.parentElement) {
+    const parsed = parse(view.getComputedStyle(node).backgroundColor);
+    if (parsed && parsed.a > 0) surface = parsed;
   }
-  // An unpainted page shows the canvas color, white unless the page opts into dark.
-  surface ??= view.matchMedia?.('(prefers-color-scheme: dark)').matches &&
-    view.getComputedStyle(el.ownerDocument.documentElement).colorScheme.includes('dark')
-    ? 'rgb(18, 18, 18)'
-    : 'rgb(255, 255, 255)';
-  const textRgb = parse(text);
-  const surfaceRgb = parse(surface);
-  if (!textRgb || !surfaceRgb) return undefined;
-  const textIsDarker = luminance(textRgb) < luminance(surfaceRgb);
-  return {
-    dark: textIsDarker ? text : surface,
-    light: textIsDarker ? surface : text,
-  };
+  if (!surface) {
+    // An unpainted page shows the canvas color, white unless the page opts into dark.
+    const scheme = view.getComputedStyle(el.ownerDocument.documentElement).colorScheme ?? '';
+    const prefersDark = view.matchMedia?.('(prefers-color-scheme: dark)').matches;
+    return scheme.includes('dark') && (prefersDark || !scheme.includes('light')) ? 'dark' : 'light';
+  }
+  // Below this, white text has more contrast than black.
+  return luminance(surface) < 0.179 ? 'dark' : 'light';
 }
