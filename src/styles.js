@@ -21,8 +21,17 @@ export const STYLES = /* css */ `
     & .og-view__image {
       margin: 0;
       flex-basis: 440px;
+      /* Stretched to the text's height beside it, 1.91:1 on its own row. */
+      align-self: stretch;
       aspect-ratio: 1.91;
       width: 100%;
+
+      & img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
     }
 
     & > .og-view__body {

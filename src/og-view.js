@@ -77,24 +77,28 @@ function fillImage(img, url, field) {
  */
 function measure(img) {
   return new Promise((resolve) => {
-    const done = () => {
-      clearTimeout(timer);
-      if (!img.naturalWidth) return resolve({ status: 'error' });
-      const entry = /** @type {PerformanceResourceTiming | undefined} */ (
-        performance.getEntriesByName(img.currentSrc || img.src, 'resource').at(-1)
-      );
-      resolve({
-        status: 'loaded',
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-        // Zero when the image is cross-origin without Timing-Allow-Origin.
-        bytes: entry?.encodedBodySize || undefined,
-      });
-    };
     const timer = setTimeout(() => resolve({ status: 'pending' }), IMAGE_TIMEOUT);
-    if (img.complete) return done();
-    img.addEventListener('load', done, { once: true });
-    img.addEventListener('error', done, { once: true });
+    // decode() settles for images that already loaded too, and unlike a zero
+    // naturalWidth, it doesn't mistake an SVG with only a viewBox for a broken image.
+    img
+      .decode()
+      .then(
+        () => {
+          const entry = /** @type {PerformanceResourceTiming | undefined} */ (
+            performance.getEntriesByName(img.currentSrc || img.src, 'resource').at(-1)
+          );
+          resolve({
+            status: 'loaded',
+            // Zero for an SVG without width and height.
+            width: img.naturalWidth || undefined,
+            height: img.naturalHeight || undefined,
+            // Zero when the image is cross-origin without Timing-Allow-Origin.
+            bytes: entry?.encodedBodySize || undefined,
+          });
+        },
+        () => resolve({ status: 'error' }),
+      )
+      .finally(() => clearTimeout(timer));
   });
 }
 

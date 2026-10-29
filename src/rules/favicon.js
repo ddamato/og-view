@@ -1,11 +1,16 @@
 import { rule, extFromMime, extFromUrl } from './util.js';
+import { pickIcon } from '../collect.js';
 
 const GOOGLE_FORMATS = ['bmp', 'gif', 'ico', 'png', 'jpg', 'ppm', 'tiff'];
 
-/** @param {import('./util.js').Context} ctx */
+/**
+ * The icon Google would use: a raster one when there is one, even though the
+ * card shows the SVG. It's only measured when it's the one the card shows.
+ * @param {import('./util.js').Context} ctx
+ */
 function favicon({ c, measure }) {
-  const url = c.fields.favicon.value;
-  const icon = c.icons.find((i) => i.href === url);
+  const icon = pickIcon(c.icons, { svg: false });
+  const url = icon?.href ?? c.fields.favicon.value;
   return { url, icon, m: measure(url) };
 }
 

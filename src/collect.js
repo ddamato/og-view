@@ -237,14 +237,20 @@ function groupMedia(tags, { roots, props }) {
 }
 
 /**
- * Picks the largest `rel=icon`, falling back to an apple-touch-icon.
- * @param {Array<{ href: string, rel: string, sizes: string | null }>} icons
+ * Picks a `rel=icon`, falling back to an apple-touch-icon. SVG icons come
+ * first, or last with `svg: false`, then the largest.
+ * @param {Array<{ href: string, rel: string, sizes: string | null, type: string | null }>} icons
+ * @param {{ svg?: boolean }} [options]
  */
-function pickIcon(icons) {
+export function pickIcon(icons, { svg = true } = {}) {
+  const isSvg = (/** @type {typeof icons[number]} */ i) =>
+    i.type?.toLowerCase() === 'image/svg+xml' || /\.svg([?#]|$)/i.test(i.href);
   const size = (/** @type {string | null} */ sizes) =>
     sizes === 'any' ? Infinity : Math.max(0, ...(sizes ?? '').split(/\s+/).map((s) => parseInt(s, 10) || 0));
   const byRel = (/** @type {(rel: string) => boolean} */ test) =>
-    icons.filter((i) => test(i.rel)).sort((a, b) => size(b.sizes) - size(a.sizes))[0];
+    icons
+      .filter((i) => test(i.rel))
+      .sort((a, b) => Number(isSvg(b) === svg) - Number(isSvg(a) === svg) || size(b.sizes) - size(a.sizes))[0];
   return byRel((rel) => /(^|\s)icon(\s|$)/.test(rel)) ?? byRel((rel) => rel.includes('apple-touch-icon'));
 }
 

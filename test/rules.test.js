@@ -148,6 +148,15 @@ describe('rules', () => {
       expect(run(COMPLETE, { measured: MEASURED }).find('image-ratio')).toEqual([]);
     });
 
+    it('checks the PNG favicon for Google when the card shows an SVG', () => {
+      const { c, find } = run(complete({ add: '<link rel="icon" href="/icon.svg" type="image/svg+xml">' }), {
+        measured: { ...MEASURED, [ICON]: { status: 'loaded', width: 32, height: 32 } },
+      });
+      expect(c.fields.favicon.value).toBe('https://example.com/icon.svg');
+      expect(find('favicon-format')).toEqual([]);
+      expect(find('favicon-size').map((f) => f.severity)).toEqual(['info']);
+    });
+
     it('suggests summary for twitter:card when there is no image', () => {
       const { find } = run('<meta property="og:title" content="T">');
       expect(find('twitter-card')[0]).toMatchObject({ severity: 'info', fix: '<meta name="twitter:card" content="summary">' });

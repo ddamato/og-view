@@ -83,6 +83,15 @@ describe('collect', () => {
       expect(get('<link rel="apple-touch-icon" href="/apple.png">').fields.favicon.source).toBe('apple-touch-icon');
       expect(get('').fields.favicon).toEqual({ value: 'https://example.com/favicon.ico', source: '/favicon.ico' });
     });
+
+    it('prefers an SVG icon over larger PNGs', () => {
+      const head = `
+        <link rel="icon" href="/96.png" sizes="96x96">
+        <link rel="icon" href="/icon.svg" type="image/svg+xml">
+      `;
+      expect(get(head).fields.favicon.value).toBe('https://example.com/icon.svg');
+      expect(get(head.replace(' type="image/svg+xml"', '')).fields.favicon.value).toBe('https://example.com/icon.svg');
+    });
   });
 
   describe('media groups', () => {
