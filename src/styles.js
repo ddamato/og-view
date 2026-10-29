@@ -1,8 +1,8 @@
 /**
  * Layout only, rendered inside each card. Selectors are wrapped in :where()
  * so they have no specificity and any page CSS wins over them, except the
- * image, which page resets like img { height: auto } would otherwise pull out
- * of its box.
+ * image and the rule, which page resets like img { height: auto } and
+ * hr { margin: 0 } would otherwise undo.
  */
 export const STYLES = /* css */ `
 :where(og-view) {
@@ -42,6 +42,10 @@ export const STYLES = /* css */ `
 
 :where(.og-view__body) {
   width: 440px;
+}
+
+.og-view__body hr {
+  margin-block: 1em;
 }
 
 :where(.og-view__field) {

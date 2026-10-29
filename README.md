@@ -49,7 +49,7 @@ It reads `<head>` and shows the site name and favicon, title, description, image
 
 The component's stylesheet only handles layout. The image and text sit side by side and wrap onto separate rows when there isn't room, and the favicon and QR code get a size.
 
-The stylesheet's selectors are wrapped in `:where()`, so any of your CSS wins over them. The one exception is `.og-view__image img`, which keeps its class so resets like `img { height: auto }` don't pull the image out of its box. To change anything, target these classes:
+The stylesheet's selectors are wrapped in `:where()`, so any of your CSS wins over them. The exceptions are `.og-view__image img` and `.og-view__body hr`, which keep their class so resets like `img { height: auto }` and `hr { margin: 0 }` don't undo them. To change anything, target these classes:
 - `og-view` (the layout), `og-view__image`, `og-view__site`, `og-view__favicon`
 - `og-view__title`, `og-view__description`, `og-view__author`, `og-view__url`, `og-view__qr`
 
